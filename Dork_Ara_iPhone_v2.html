@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Dork Ara">
+<title>Dork Ara</title>
+<style>
+:root{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",sans-serif}
+*{box-sizing:border-box}
+body{margin:0;background:#f2f2f7;color:#111;min-height:100vh}
+main{max-width:560px;margin:auto;padding:calc(20px + env(safe-area-inset-top)) 16px calc(24px + env(safe-area-inset-bottom))}
+.card{background:#fff;border-radius:20px;padding:20px;box-shadow:0 2px 12px rgba(0,0,0,.07);margin-bottom:14px}
+h1{font-size:27px;margin:0 0 6px}
+.sub{color:#666;font-size:14px;margin-bottom:18px}
+input[type=text]{width:100%;height:50px;border:1px solid #d1d1d6;border-radius:12px;padding:0 14px;font-size:17px;background:#fff}
+h2{font-size:16px;margin:20px 0 10px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.option{position:relative}
+.option input{position:absolute;opacity:0}
+.option label{display:block;border:1px solid #d1d1d6;border-radius:12px;padding:12px;text-align:center;font-size:15px}
+.option input:checked+label{border:2px solid #007aff;padding:11px;color:#007aff;font-weight:600;background:#f0f7ff}
+button{width:100%;height:52px;border:0;border-radius:12px;background:#007aff;color:#fff;font-size:17px;font-weight:600;margin-top:20px}
+button.secondary{background:#e9e9ee;color:#111;margin-top:10px}
+#result{display:none}
+pre{white-space:pre-wrap;word-break:break-word;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13px;line-height:1.45;background:#f2f2f7;border-radius:12px;padding:13px;margin:10px 0 0}
+.note{font-size:12px;color:#777;line-height:1.4;margin-top:12px}
+</style>
+</head>
+<body>
+<main>
+<section class="card">
+<h1>Dork Ara</h1>
+<div class="sub">Google / Yandex gelişmiş arama sorgusu oluşturucu</div>
+
+<input id="q" type="text" placeholder="Örn. anatomi, farmakoloji, kitap..." autocomplete="off" autocapitalize="none">
+
+<h2>Dosya türü</h2>
+<div class="grid">
+<div class="option"><input id="f0" type="radio" name="file" value="" checked><label for="f0">Hepsi</label></div>
+<div class="option"><input id="f1" type="radio" name="file" value="pdf"><label for="f1">PDF</label></div>
+<div class="option"><input id="f2" type="radio" name="file" value="rar"><label for="f2">RAR</label></div>
+<div class="option"><input id="f3" type="radio" name="file" value="exe"><label for="f3">EXE</label></div>
+</div>
+
+<h2>Arama noktası</h2>
+<div class="grid">
+<div class="option"><input id="s0" type="radio" name="site" value="" checked><label for="s0">Web geneli</label></div>
+<div class="option"><input id="s1" type="radio" name="site" value="drive.google.com"><label for="s1">Google Drive</label></div>
+<div class="option"><input id="s2" type="radio" name="site" value="disk.yandex.com"><label for="s2">Yandex Disk</label></div>
+<div class="option"><input id="s3" type="radio" name="site" value="article"><label for="s3">Makale</label></div>
+<div class="option"><input id="s4" type="radio" name="site" value="book"><label for="s4">Kitap</label></div>
+</div>
+
+<button type="button" id="search">Google'da Ara</button>
+</section>
+
+<section class="card" id="result">
+<strong>Oluşturulan sorgu</strong>
+<pre id="dork"></pre>
+<button type="button" class="secondary" id="copy">Sorguyu Kopyala</button>
+<button type="button" class="secondary" id="open">Arama Motorunda Aç</button>
+<div class="note">Arama butonu çalışmazsa “Sorguyu Kopyala” ile sorguyu kopyalayıp Safari'nin adres çubuğunda Google'a yapıştırabilirsin.</div>
+</section>
+</main>
+
+<script>
+(function(){
+  const q=document.getElementById('q');
+  const result=document.getElementById('result');
+  const dorkEl=document.getElementById('dork');
+
+  function selected(name){
+    const el=document.querySelector('input[name="'+name+'"]:checked');
+    return el ? el.value : '';
+  }
+
+  function makeDork(){
+    const text=q.value.trim().replace(/"/g,'');
+    if(!text){ alert('Önce bir arama terimi yaz.'); q.focus(); return null; }
+
+    let d='intitle:"'+text+'"';
+    const file=selected('file');
+    const site=selected('site');
+
+    if(file) d+=' filetype:'+file;
+    if(site==='drive.google.com' || site==='disk.yandex.com') d+=' site:'+site;
+    else if(site==='article') d+=' inurl:article';
+    else if(site==='book') d+=' inurl:book';
+
+    return d;
+  }
+
+  function show(){
+    const d=makeDork();
+    if(!d)return;
+    dorkEl.textContent=d;
+    result.style.display='block';
+    result.scrollIntoView({behavior:'smooth',block:'start'});
+    return d;
+  }
+
+  function getSearchTarget(){
+    const site=selected('site');
+    if(site==='disk.yandex.com'){
+      return {
+        name:'Yandex',
+        url:function(d){
+          return 'https://yandex.com/search/?text='+encodeURIComponent(d);
+        }
+      };
+    }
+    return {
+      name:'Google',
+      url:function(d){
+        return 'https://www.google.com/search?q='+encodeURIComponent(d);
+      }
+    };
+  }
+
+  function updateButtons(){
+    const target=getSearchTarget();
+    document.getElementById('search').textContent=target.name+'\'da Ara';
+    document.getElementById('open').textContent=target.name+'\'da Aç';
+  }
+
+  document.querySelectorAll('input[name="site"]').forEach(function(el){
+    el.addEventListener('change',updateButtons);
+  });
+  updateButtons();
+
+  document.getElementById('search').addEventListener('click',function(){
+    const d=show();
+    if(!d)return;
+    const target=getSearchTarget();
+    // Safari/iOS'ta aynı sekmede ilgili arama motorunu aç.
+    window.location.assign(target.url(d));
+  });
+
+  document.getElementById('open').addEventListener('click',function(){
+    const d=makeDork();
+    if(d){
+      const target=getSearchTarget();
+      window.location.assign(target.url(d));
+    }
+  });
+
+  document.getElementById('copy').addEventListener('click',async function(){
+    const d=makeDork();
+    if(!d)return;
+    try{
+      await navigator.clipboard.writeText(d);
+      this.textContent='Kopyalandı';
+      setTimeout(()=>this.textContent='Sorguyu Kopyala',1300);
+    }catch(e){
+      const ta=document.createElement('textarea');
+      ta.value=d; document.body.appendChild(ta); ta.select();
+      document.execCommand('copy'); ta.remove();
+      this.textContent='Kopyalandı';
+      setTimeout(()=>this.textContent='Sorguyu Kopyala',1300);
+    }
+  });
+
+  q.addEventListener('keydown',function(e){
+    if(e.key==='Enter') document.getElementById('search').click();
+  });
+})();
+</script>
+</body>
+</html>
